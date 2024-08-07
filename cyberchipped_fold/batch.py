@@ -45,7 +45,6 @@ if TYPE_CHECKING:
     from alphafold.model import model
     from numpy import ndarray
 
-from alphafold.common.protein import Protein
 from alphafold.data import (
     feature_processing,
     msa_pairing,
@@ -54,27 +53,24 @@ from alphafold.data import (
     templates,
 )
 from alphafold.data.tools import hhsearch
-from colabfold.citations import write_bibtex
-from colabfold.download import default_data_dir, download_alphafold_params
-from colabfold.utils import (
+from cyberchipped_fold.citations import write_bibtex
+from cyberchipped_fold.download import default_data_dir, download_alphafold_params
+from cyberchipped_fold.utils import (
     ACCEPT_DEFAULT_TERMS,
     DEFAULT_API_SERVER,
-    NO_GPU_FOUND,
     CIF_REVISION_DATE,
     get_commit,
     safe_filename,
     setup_logging,
     CFMMCIFIO,
 )
-from colabfold.relax import relax_me
+from cyberchipped_fold.relax import relax_me
 
 from Bio.PDB import MMCIFParser, PDBParser, MMCIF2Dict
 from Bio.PDB.PDBIO import Select
 
 # logging settings
 logger = logging.getLogger(__name__)
-import jax
-import jax.numpy as jnp
 
 # from jax 0.4.6, jax._src.lib.xla_bridge moved to jax._src.xla_bridge
 # suppress warnings: Unable to initialize backend 'rocm' or 'tpu'
@@ -106,13 +102,13 @@ def mk_mock_template(
         "template_all_atom_masks": np.tile(
             templates_all_atom_masks[None], [num_temp, 1, 1]
         ),
-        "template_sequence": [f"none".encode()] * num_temp,
+        "template_sequence": ["none".encode()] * num_temp,
         "template_aatype": np.tile(np.array(templates_aatype)[None], [num_temp, 1, 1]),
         "template_confidence_scores": np.tile(
             output_confidence_scores[None], [num_temp, 1]
         ),
-        "template_domain_names": [f"none".encode()] * num_temp,
-        "template_release_date": [f"none".encode()] * num_temp,
+        "template_domain_names": ["none".encode()] * num_temp,
+        "template_release_date": ["none".encode()] * num_temp,
         "template_sum_probs": np.zeros([num_temp], dtype=np.float32),
     }
     return template_features
@@ -277,7 +273,7 @@ def pad_input(
     pad_len: int,
     use_templates: bool,
 ) -> model.features.FeatureDict:
-    from colabfold.alphafold.msa import make_fixed_size
+    from cyberchipped_fold.alphafold.msa import make_fixed_size
 
     model_config = model_runner.config
     eval_cfg = model_config.data.eval
@@ -729,7 +725,7 @@ def get_msa_and_templates(
 ) -> Tuple[
     Optional[List[str]], Optional[List[str]], List[str], List[int], List[Dict[str, Any]]
 ]:
-    from colabfold.colabfold import run_mmseqs2
+    from cyberchipped_fold.colabfold import run_mmseqs2
 
     use_env = msa_mode == "mmseqs2_uniref_env"
     if isinstance(query_sequences, str): query_sequences = [query_sequences]
@@ -955,7 +951,7 @@ def pair_msa(
             paired_msa, query_seqs_unique, query_seqs_cardinality
         )
     else:
-        raise ValueError(f"Invalid pairing")
+        raise ValueError("Invalid pairing")
     return a3m_lines
 
 def generate_input_feature(
@@ -1070,7 +1066,7 @@ def unserialize_msa(
         )
 
     if len(a3m_lines) < 3:
-        raise ValueError(f"Unknown file format a3m")
+        raise ValueError("Unknown file format a3m")
     tab_sep_entries = a3m_lines[0][1:].split("\t")
     query_seq_len = tab_sep_entries[0].split(",")
     query_seq_len = list(map(int, query_seq_len))
@@ -1286,10 +1282,9 @@ def run(
             # disable GPU on tensorflow
             tf.config.set_visible_devices([], 'GPU')
 
-    from alphafold.notebooks.notebook_utils import get_pae_json
-    from colabfold.alphafold.models import load_models_and_params
-    from colabfold.colabfold import plot_paes, plot_plddts
-    from colabfold.plot import plot_msa_v2
+    from cyberchipped_fold.alphafold.models import load_models_and_params
+    from cyberchipped_fold.colabfold import plot_paes, plot_plddts
+    from cyberchipped_fold.plot import plot_msa_v2
 
     data_dir = Path(data_dir)
     result_dir = Path(result_dir)
@@ -1389,7 +1384,7 @@ def run(
         "use_cluster_profile": use_cluster_profile,
         "use_fuse": use_fuse,
         "use_bfloat16": use_bfloat16,
-        "version": importlib_metadata.version("colabfold"),
+        "version": "0.0.1",
     }
     config_out_file = result_dir.joinpath("config.json")
     config_out_file.write_text(json.dumps(config, indent=4))

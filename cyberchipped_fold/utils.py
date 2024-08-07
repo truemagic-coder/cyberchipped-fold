@@ -65,15 +65,18 @@ def safe_filename(file: str) -> str:
 
 
 def get_commit() -> Optional[str]:
-    text = distribution("colabfold").read_text("direct_url.json")
-    if not text:
+    try:
+        text = distribution("cyberchipped_fold").read_text("direct_url.json")
+        if not text:
+            return None
+        direct_url = json.loads(text)
+        if "vcs_info" not in direct_url:
+            return None
+        if "commit_id" not in direct_url["vcs_info"]:
+            return None
+        return direct_url["vcs_info"]["commit_id"]
+    except Exception:
         return None
-    direct_url = json.loads(text)
-    if "vcs_info" not in direct_url:
-        return None
-    if "commit_id" not in direct_url["vcs_info"]:
-        return None
-    return direct_url["vcs_info"]["commit_id"]
 
 
 # Copied from Bio.PDB to override _save_dict method

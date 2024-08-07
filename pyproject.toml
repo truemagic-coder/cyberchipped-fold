@@ -1,22 +1,16 @@
 [tool.poetry]
 name = "cyberchipped-fold"
 version = "0.0.1"
-description = "Making protein folding accessible to all using AlphaFold2. Predict protein structures both in Google Colab and on your machine."
-authors = [
-    "Milot Mirdita <mmirdit@snu.ac.kr>",
-    "Sergey Ovchinnikov <so@fas.harvard.edu>",
-    "Martin Steinegger <martin.steinegger@snu.ac.kr>",
-    "Kostantin Schütze <schuetze@in.tum.de>",
-    "Yoshitaka Moriwaki",
-    "Lim Heo",
-]
+description = "ColabFold modified for AlphaFold2 and local installation"
+authors = ["Bevan Hunt"]
 readme = "README.md"
 license = "MIT, but separate licenses for the trained weights"
-repository = "https://github.com/sokrypton/ColabFold"
+repository = "https://github.com/truemagic-coder/cyberchipped-fold"
 classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
+packages = [{include = "cyberchipped_fold"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
@@ -29,7 +23,7 @@ biopython = "<1.83"
 numpy = "^1.22.0"
 pandas = "^1.3.4"
 alphafold-colabfold = { version = "v2.3.6", optional = true }
-requests = "^2.26.0"
+requests = "^2.32.3"
 tqdm = "^4.62.2"
 appdirs = "^1.4.4"
 py3Dmol = "^2.0.1"
@@ -37,9 +31,13 @@ dm-haiku = "^0.0.12"
 importlib-metadata = "^4.8.2"
 
 [tool.poetry.dev-dependencies]
-black = "^23.1.0"
+ruff = "^0.5.6"
 jupyter = "^1.0.0"
-pytest = "^6.2.5"
+pytest = "^8.3.2"
+absl-py = "^1.0.0"
+dm-haiku = "^0.0.12"
+alphafold-colabfold = { version = "v2.3.6" }
+mock = "^5.1.0"
 
 [tool.poetry.extras]
 alphafold = ["alphafold-colabfold", "jax"]
@@ -49,24 +47,22 @@ alphafold-minus-jax = ["alphafold-colabfold"]
 addopts = "--tb=short"
 
 [tool.poetry.scripts]
-colabfold_batch = 'colabfold.batch:main'
-colabfold_search = 'colabfold.mmseqs.search:main'
-colabfold_split_msas = 'colabfold.mmseqs.split_msas:main'
-colabfold_relax = 'colabfold.relax:main'
+colabfold_batch = 'cyberchipped_fold.batch:main'
+colabfold_search = 'cyberchipped_fold.mmseqs.search:main'
+colabfold_split_msas = 'cyberchipped_fold.mmseqs.split_msas:main'
+colabfold_relax = 'cyberchipped_fold.relax:main'
 
-[tool.black]
-include = '''
-/(
-  | colabfold
-  | tests
-)/
-'''
-extend-exclude = '''
-/(
-  | __pycache__
-  | colabfold/colabfold.py
-)/
-'''
+[tool.ruff]
+linength = 120
+target-version = "py39"
+select = ["E", "F", "I", "W"]
+ignore = []
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.isort]
+known-first-party = ["cyberchipped_fold"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0,<2.0.0"]
