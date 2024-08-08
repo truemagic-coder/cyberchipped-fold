@@ -3,7 +3,7 @@
 type wget 2>/dev/null || { echo "wget is not installed. Please install it using apt or yum." ; exit 1 ; }
 
 CURRENTPATH=`pwd`
-CYBERFOLDDIR="${CURRENTPATH}/UltimateCyberchippedFold"
+CYBERFOLDDIR="${CURRENTPATH}"
 
 mkdir -p "${CYBERFOLDDIR}"
 cd "${CYBERFOLDDIR}"
