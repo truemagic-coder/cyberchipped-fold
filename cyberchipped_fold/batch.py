@@ -1994,7 +1994,7 @@ def main():
 
     setup_logging(Path(args.results).joinpath("log.txt"))
 
-    version = importlib_metadata.version("colabfold")
+    version = "0.0.1"
     commit = get_commit()
     if commit:
         version += f" ({commit})"
