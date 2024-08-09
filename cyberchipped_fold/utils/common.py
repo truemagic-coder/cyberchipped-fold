@@ -2,6 +2,11 @@ import os
 import re
 from pathlib import Path
 from typing import List, Optional, Tuple
+from datetime import datetime
+
+ACCEPT_DEFAULT_TERMS = True
+DEFAULT_API_SERVER = "https://api.colabfold.com"
+CIF_REVISION_DATE = datetime.now().strftime("%Y-%m-%d")
 
 def safe_filename(file: str) -> str:
     return re.sub(r'[^\w_. -]', '_', file)
