@@ -56,7 +56,7 @@ def run(
     max_seq: Optional[int] = None,
     max_extra_seq: Optional[int] = None,
     use_cluster_profile: bool = True,
-    num_gpus: int = None,
+    num_gpus: int = 1,
     jobs_per_gpu: int = 1,
 ):
     result_dir = Path(result_dir)
@@ -64,8 +64,6 @@ def run(
     model_type = set_model_type(is_complex, model_type)
 
     # Set up GPU environment variables
-    if num_gpus is None:
-        num_gpus = len(os.environ.get('CUDA_VISIBLE_DEVICES', '').split(','))
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(i) for i in range(num_gpus)])
     
     # Record the parameters of this run
@@ -226,7 +224,7 @@ def main():
     parser.add_argument("--num_models", type=int, default=5, help="Number of models to run")
     parser.add_argument("--use_templates", action="store_true", help="Use templates")
     parser.add_argument("--msa_mode", default="mmseqs2_uniref_env", help="MSA mode")
-    parser.add_argument("--num_gpus", type=int, default=None, help="Number of GPUs to use")
+    parser.add_argument("--num_gpus", type=int, default=1, help="Number of GPUs to use")
     parser.add_argument("--jobs_per_gpu", type=int, default=1, help="Number of jobs to run on each GPU")
     
     args = parser.parse_args()
