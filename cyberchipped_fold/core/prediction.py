@@ -9,7 +9,8 @@ import pickle
 
 from cyberchipped_fold.utils.file_management import file_manager
 from cyberchipped_fold.utils import protein
-from cyberchipped_fold.utils.relaxation import relax_protein
+from cyberchipped_fold.relax import relax_me
+
 
 def predict_structure(
     prefix: str,
@@ -58,8 +59,10 @@ def predict_structure(
     jobs = []
     for seed_num, seed in enumerate(range(random_seed, random_seed + num_seeds)):
         for model_num, (model_name, model_runner, params) in enumerate(model_runner_and_params):
-            gpu_id = (seed_num * len(model_runner_and_params) + model_num) % num_gpus
-            jobs.append((seed_num, seed, model_num, model_name, model_runner, params, gpu_id))
+            gpu_id = (seed_num * len(model_runner_and_params) +
+                      model_num) % num_gpus
+            jobs.append((seed_num, seed, model_num, model_name,
+                        model_runner, params, gpu_id))
 
     # Function to process a single job
     def process_job(job):
@@ -73,15 +76,18 @@ def predict_structure(
         if "multimer" in model_type:
             if model_num == 0 and seed_num == 0:
                 input_features = feature_dict.copy()
-                input_features["asym_id"] = input_features["asym_id"] - input_features["asym_id"][...,0]
+                input_features["asym_id"] = input_features["asym_id"] - \
+                    input_features["asym_id"][..., 0]
         else:
             if model_num == 0:
-                input_features = model_runner.process_features(feature_dict, random_seed=seed)
+                input_features = model_runner.process_features(
+                    feature_dict, random_seed=seed)
                 r = input_features["aatype"].shape[0]
-                input_features["asym_id"] = np.tile(feature_dict["asym_id"],r).reshape(r,-1)
+                input_features["asym_id"] = np.tile(
+                    feature_dict["asym_id"], r).reshape(r, -1)
                 if seq_len < pad_len:
                     input_features = pad_input(input_features, model_runner,
-                        model_name, pad_len, use_templates)
+                                               model_name, pad_len, use_templates)
                     print(f"Padding length to {pad_len}")
 
         tag = f"{model_type}_{model_name}_seed_{seed:03d}"
@@ -90,12 +96,14 @@ def predict_structure(
         start = time.time()
 
         def callback(result, recycles):
-            if recycles == 0: result.pop("tol",None)
-            if not is_complex: result.pop("iptm",None)
+            if recycles == 0:
+                result.pop("tol", None)
+            if not is_complex:
+                result.pop("iptm", None)
             print_line = ""
-            for x,y in [["mean_plddt","pLDDT"],["ptm","pTM"],["iptm","ipTM"],["tol","tol"]]:
-              if x in result:
-                print_line += f" {y}={result[x]:.3g}"
+            for x, y in [["mean_plddt", "pLDDT"], ["ptm", "pTM"], ["iptm", "ipTM"], ["tol", "tol"]]:
+                if x in result:
+                    print_line += f" {y}={result[x]:.3g}"
             print(f"{tag} recycle={recycles}{print_line}")
 
             if save_recycles:
@@ -105,10 +113,11 @@ def predict_structure(
                     features=input_features,
                     result=result, b_factors=b_factors,
                     remove_leading_feature_dimension=("multimer" not in model_type))
-                files.get("unrelaxed",f"r{recycles}.pdb").write_text(protein.to_pdb(unrelaxed_protein))
+                files.get("unrelaxed", f"r{recycles}.pdb").write_text(
+                    protein.to_pdb(unrelaxed_protein))
 
                 if save_all:
-                    with files.get("all",f"r{recycles}.pickle").open("wb") as handle:
+                    with files.get("all", f"r{recycles}.pickle").open("wb") as handle:
                         pickle.dump(result, handle)
                 del unrelaxed_protein
 
@@ -116,23 +125,25 @@ def predict_structure(
 
         # predict
         result, recycles = \
-        model_runner.predict(input_features,
-            random_seed=seed,
-            return_representations=return_representations,
-            callback=callback)
+            model_runner.predict(input_features,
+                                 random_seed=seed,
+                                 return_representations=return_representations,
+                                 callback=callback)
 
         prediction_time = time.time() - start
 
         # parse results
         mean_score = result["ranking_confidence"]
-        if recycles == 0: result.pop("tol",None)
-        if not is_complex: result.pop("iptm",None)
+        if recycles == 0:
+            result.pop("tol", None)
+        if not is_complex:
+            result.pop("iptm", None)
         print_line = ""
         conf_entry = {}
-        for x,y in [["mean_plddt","pLDDT"],["ptm","pTM"],["iptm","ipTM"]]:
-          if x in result:
-            print_line += f" {y}={result[x]:.3g}"
-            conf_entry[x] = float(result[x])
+        for x, y in [["mean_plddt", "pLDDT"], ["ptm", "pTM"], ["iptm", "ipTM"]]:
+            if x in result:
+                print_line += f" {y}={result[x]:.3g}"
+                conf_entry[x] = float(result[x])
         conf_entry["print_line"] = print_line
         print(f"{tag} took {prediction_time:.1f}s ({recycles} recycles)")
 
@@ -149,25 +160,28 @@ def predict_structure(
         protein_lines = protein.to_pdb(unrelaxed_protein)
 
         if save_all:
-            with files.get("all","pickle").open("wb") as handle:
+            with files.get("all", "pickle").open("wb") as handle:
                 pickle.dump(result, handle)
         if save_single_representations:
-            np.save(files.get("single_repr","npy"),result["representations"]["single"])
+            np.save(files.get("single_repr", "npy"),
+                    result["representations"]["single"])
         if save_pair_representations:
-            np.save(files.get("pair_repr","npy"),result["representations"]["pair"])
+            np.save(files.get("pair_repr", "npy"),
+                    result["representations"]["pair"])
 
         # write an easy-to-use format (pAE and pLDDT)
         scores = {}
-        with files.get("scores","json").open("w") as handle:
+        with files.get("scores", "json").open("w") as handle:
             plddt = result["plddt"][:seq_len]
             scores = {"plddt": np.around(plddt.astype(float), 2).tolist()}
             if "predicted_aligned_error" in result:
-              pae   = result["predicted_aligned_error"][:seq_len,:seq_len]
-              scores.update({"max_pae": pae.max().astype(float).item(),
-                             "pae": np.around(pae.astype(float), 2).tolist()})
-              for k in ["ptm","iptm"]:
-                if k in conf_entry: scores[k] = np.around(conf_entry[k], 2).item()
-              del pae
+                pae = result["predicted_aligned_error"][:seq_len, :seq_len]
+                scores.update({"max_pae": pae.max().astype(float).item(),
+                               "pae": np.around(pae.astype(float), 2).tolist()})
+                for k in ["ptm", "iptm"]:
+                    if k in conf_entry:
+                        scores[k] = np.around(conf_entry[k], 2).item()
+                del pae
             del plddt
             json.dump(scores, handle)
 
@@ -185,7 +199,7 @@ def predict_structure(
         model_names.append(tag)
 
         files.set_tag(tag)
-        files.get("unrelaxed","pdb").write_text(protein_lines)
+        files.get("unrelaxed", "pdb").write_text(protein_lines)
 
         # early stop criteria fulfilled
         if mean_score > stop_at_score:
@@ -195,7 +209,7 @@ def predict_structure(
     pool.join()
 
     # rerank models based on predicted confidence
-    rank, metric = [],[]
+    rank, metric = [], []
     result_files = []
     print(f"reranking models by '{rank_by}' metric")
     model_rank = np.array(mean_scores).argsort()[::-1]
@@ -206,14 +220,14 @@ def predict_structure(
         # save relaxed pdb
         if n < num_relax:
             start = time.time()
-            pdb_lines = relax_protein(
+            pdb_lines = relax_me(
                 pdb_lines=unrelaxed_pdb_lines[key],
                 max_iterations=relax_max_iterations,
                 tolerance=relax_tolerance,
                 stiffness=relax_stiffness,
                 max_outer_iterations=relax_max_outer_iterations,
                 use_gpu=use_gpu_relax)
-            files.get("relaxed","pdb").write_text(pdb_lines)
+            files.get("relaxed", "pdb").write_text(pdb_lines)
             print(f"Relaxation took {(time.time() - start):.1f}s")
 
         # rename files to include rank
@@ -225,9 +239,10 @@ def predict_structure(
             file.rename(new_file)
             result_files.append(new_file)
 
-    return {"rank":rank,
-            "metric":metric,
-            "result_files":result_files}
+    return {"rank": rank,
+            "metric": metric,
+            "result_files": result_files}
+
 
 def pad_input(
     input_features: Dict[str, Any],
