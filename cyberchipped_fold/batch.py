@@ -9,7 +9,6 @@ from cyberchipped_fold.utils import (
     get_commit,
     safe_filename,
     setup_logging,
-    CFMMCIFIO,
 )
 from cyberchipped_fold.download import default_data_dir, download_alphafold_params
 from cyberchipped_fold.citations import write_bibtex
