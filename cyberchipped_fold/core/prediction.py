@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 import multiprocessing as mp
 import torch
+import pickle
 
 from cyberchipped_fold.utils.file_management import file_manager
-from cyberchipped_fold.models.model_runner import load_models_and_params
-from cyberchipped_fold.visualization.plots import plot_pae, plot_plddt
+from cyberchipped_fold.utils import protein
+from cyberchipped_fold.utils.relaxation import relax_protein
 
 def predict_structure(
     prefix: str,
@@ -205,7 +206,7 @@ def predict_structure(
         # save relaxed pdb
         if n < num_relax:
             start = time.time()
-            pdb_lines = relax_me(
+            pdb_lines = relax_protein(
                 pdb_lines=unrelaxed_pdb_lines[key],
                 max_iterations=relax_max_iterations,
                 tolerance=relax_tolerance,

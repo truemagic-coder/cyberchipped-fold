@@ -1,7 +1,11 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 import numpy as np
 from alphafold.data import pipeline, pipeline_multimer
-from alphafold.model import model, features
+from alphafold.model import features
+from alphafold.data import feature_processing
+from cyberchipped_fold.utils import protein
+from cyberchipped_fold.core.msa import pair_msa
+from cyberchipped_fold.batch import mk_mock_template
 
 def build_monomer_feature(
     sequence: str, unpaired_msa: str, template_features: Dict[str, Any]
@@ -99,7 +103,7 @@ def generate_input_feature(
                 full_sequence += sequence
                 Ls.append(len(sequence))
 
-        # bugfix
+        # Implement the bugfix here
         a3m_lines = f">0\n{full_sequence}\n"
         a3m_lines += pair_msa(query_seqs_unique, query_seqs_cardinality, paired_msa, unpaired_msa)
 
