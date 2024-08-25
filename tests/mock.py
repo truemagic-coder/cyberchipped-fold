@@ -11,7 +11,7 @@ import numpy as np
 from alphafold.model.features import FeatureDict
 from alphafold.model.model import RunModel
 
-from cyberchipped_fold.colabfold import run_mmseqs2
+from folding.colabfold import run_mmseqs2
 
 
 def jnp_to_np(output: Dict[str, Any]) -> Dict[str, Any]:

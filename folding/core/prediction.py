@@ -7,9 +7,9 @@ import multiprocessing as mp
 import torch
 import pickle
 
-from cyberchipped_fold.utils.file_management import file_manager
-from cyberchipped_fold.utils import protein
-from cyberchipped_fold.relax import relax_me
+from folding.utils.file_management import file_manager
+from folding.utils import protein
+from folding.relax import relax_me
 
 
 def predict_structure(
@@ -251,7 +251,7 @@ def pad_input(
     pad_len: int,
     use_templates: bool,
 ) -> Dict[str, Any]:
-    from cyberchipped_fold.core.features import make_fixed_size
+    from folding.core.features import make_fixed_size
 
     model_config = model_runner.config
     eval_cfg = model_config.data.eval

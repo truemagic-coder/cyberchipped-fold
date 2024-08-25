@@ -3,9 +3,9 @@ import numpy as np
 from alphafold.data import pipeline, pipeline_multimer
 from alphafold.model import features
 from alphafold.data import feature_processing
-from cyberchipped_fold.utils import protein
-from cyberchipped_fold.core.msa import pair_msa
-from cyberchipped_fold.batch import mk_mock_template
+from folding.utils import protein
+from folding.core.msa import pair_msa
+from folding.batch import mk_mock_template
 
 def build_monomer_feature(
     sequence: str, unpaired_msa: str, template_features: Dict[str, Any]

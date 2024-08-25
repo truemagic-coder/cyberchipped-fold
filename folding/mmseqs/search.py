@@ -13,8 +13,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pathlib import Path
 from typing import List, Union
 
-from cyberchipped_fold.batch import get_queries, msa_to_str
-from cyberchipped_fold.utils import safe_filename
+from folding.batch import get_queries, msa_to_str
+from folding.utils import safe_filename
 
 logger = logging.getLogger(__name__)
 

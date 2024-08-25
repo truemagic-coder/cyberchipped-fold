@@ -1,8 +1,8 @@
 from __future__ import annotations
 from Bio.PDB.PDBIO import Select
 from Bio.PDB import MMCIFParser, PDBParser, MMCIF2Dict
-from cyberchipped_fold.relax import relax_me
-from cyberchipped_fold.utils import (
+from folding.relax import relax_me
+from folding.utils import (
     ACCEPT_DEFAULT_TERMS,
     DEFAULT_API_SERVER,
     CIF_REVISION_DATE,
@@ -11,8 +11,8 @@ from cyberchipped_fold.utils import (
     setup_logging,
     CFMMCIFIO,
 )
-from cyberchipped_fold.download import default_data_dir, download_alphafold_params
-from cyberchipped_fold.citations import write_bibtex
+from folding.download import default_data_dir, download_alphafold_params
+from folding.citations import write_bibtex
 from alphafold.data.tools import hhsearch
 from alphafold.data import (
     feature_processing,
@@ -274,7 +274,7 @@ def pad_input(
     pad_len: int,
     use_templates: bool,
 ) -> model.features.FeatureDict:
-    from cyberchipped_fold.alphafold.msa import make_fixed_size
+    from folding.alphafold.msa import make_fixed_size
 
     model_config = model_runner.config
     eval_cfg = model_config.data.eval
@@ -753,7 +753,7 @@ def get_msa_and_templates(
     Optional[List[str]], Optional[List[str]
                                   ], List[str], List[int], List[Dict[str, Any]]
 ]:
-    from cyberchipped_fold.colabfold import run_mmseqs2
+    from folding.colabfold import run_mmseqs2
 
     use_env = msa_mode == "mmseqs2_uniref_env"
     if isinstance(query_sequences, str):
@@ -1336,9 +1336,9 @@ def run(
             # disable GPU on tensorflow
             tf.config.set_visible_devices([], 'GPU')
 
-    from cyberchipped_fold.alphafold.models import load_models_and_params
-    from cyberchipped_fold.colabfold import plot_paes, plot_plddts
-    from cyberchipped_fold.plot import plot_msa_v2
+    from folding.alphafold.models import load_models_and_params
+    from folding.colabfold import plot_paes, plot_plddts
+    from folding.plot import plot_msa_v2
 
     data_dir = Path(data_dir)
     result_dir = Path(result_dir)

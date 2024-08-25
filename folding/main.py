@@ -5,12 +5,12 @@ from pathlib import Path
 from typing import List, Tuple, Optional, Union
 import os
 
-from cyberchipped_fold.core.prediction import predict_structure
-from cyberchipped_fold.core.msa import get_msa_and_templates, msa_to_str
-from cyberchipped_fold.core.features import generate_input_feature
-from cyberchipped_fold.utils.common import safe_filename, get_commit, setup_logging
-from cyberchipped_fold.models.model_runner import load_models_and_params
-from cyberchipped_fold.visualization.plots import plot_msa_v2, plot_paes, plot_plddts
+from folding.core.prediction import predict_structure
+from folding.core.msa import get_msa_and_templates, msa_to_str
+from folding.core.features import generate_input_feature
+from folding.utils.common import safe_filename, get_commit, setup_logging
+from folding.models.model_runner import load_models_and_params
+from folding.visualization.plots import plot_msa_v2, plot_paes, plot_plddts
 
 logger = logging.getLogger(__name__)
 

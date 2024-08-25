@@ -16,8 +16,8 @@ def get_msa_and_templates(
 ) -> Tuple[
     Optional[List[str]], Optional[List[str]], List[str], List[int], List[Dict[str, Any]]
 ]:
-    from cyberchipped_fold.data.templates import mk_mock_template, mk_template
-    from cyberchipped_fold.utils.common import run_mmseqs2
+    from folding.data.templates import mk_mock_template, mk_template
+    from folding.utils.common import run_mmseqs2
 
     use_env = msa_mode == "mmseqs2_uniref_env"
 

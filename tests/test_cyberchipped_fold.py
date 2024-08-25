@@ -10,8 +10,8 @@ from absl import logging as absl_logging
 from alphafold.model.data import get_model_haiku_params
 from alphafold.model.tf import utils
 
-from cyberchipped_fold.batch import get_queries, msa_to_str, run, unserialize_msa
-from cyberchipped_fold.download import download_alphafold_params
+from folding.batch import get_queries, msa_to_str, run, unserialize_msa
+from folding.download import download_alphafold_params
 from tests.mock import MMseqs2Mock, MockRunModel
 
 
@@ -63,7 +63,7 @@ def test_batch(pytestconfig, caplog, tmp_path, prediction_test):
                 model_runner, feat, random_seed, return_representations, callback
             ),
         ),
-        mock.patch("cyberchipped_fold.colabfold.run_mmseqs2", mock_run_mmseqs),
+        mock.patch("folding.colabfold.run_mmseqs2", mock_run_mmseqs),
     ):
         run(
             queries,
@@ -134,7 +134,7 @@ def test_zip(pytestconfig, caplog, tmp_path, prediction_test):
                 model_runner, feat, random_seed, return_representations, callback
             ),
         ),
-        mock.patch("cyberchipped_fold.colabfold.run_mmseqs2", mock_run_mmseqs),
+        mock.patch("folding.colabfold.run_mmseqs2", mock_run_mmseqs),
     ):
         run(
             queries,
@@ -183,7 +183,7 @@ def test_single_sequence(pytestconfig, caplog, tmp_path, prediction_test):
                 model_runner, feat, random_seed, return_representations, callback
             ),
         ),
-        mock.patch("cyberchipped_fold.colabfold.run_mmseqs2", mock_run_mmseqs),
+        mock.patch("folding.colabfold.run_mmseqs2", mock_run_mmseqs),
     ):
         run(
             queries,
@@ -244,7 +244,7 @@ def test_complex(pytestconfig, caplog, tmp_path, prediction_test):
                 model_runner, feat, random_seed, return_representations, callback
             ),
         ),
-        mock.patch("cyberchipped_fold.colabfold.run_mmseqs2", mock_run_mmseqs2),
+        mock.patch("folding.colabfold.run_mmseqs2", mock_run_mmseqs2),
     ):
         run(
             queries,
@@ -292,7 +292,7 @@ def test_complex_ptm(pytestconfig, caplog, tmp_path, prediction_test):
                 model_runner, feat, random_seed, return_representations, callback
             ),
         ),
-        mock.patch("cyberchipped_fold.colabfold.run_mmseqs2", mock_run_mmseqs2),
+        mock.patch("folding.colabfold.run_mmseqs2", mock_run_mmseqs2),
     ):
         run(
             queries,
@@ -341,7 +341,7 @@ def test_complex_monomer_ptm(pytestconfig, caplog, tmp_path, prediction_test):
                 model_runner, feat, random_seed, return_representations, callback
             ),
         ),
-        mock.patch("cyberchipped_fold.colabfold.run_mmseqs2", mock_run_mmseqs2),
+        mock.patch("folding.colabfold.run_mmseqs2", mock_run_mmseqs2),
     ):
         run(
             queries,
@@ -390,7 +390,7 @@ def test_complex_monomer(pytestconfig, caplog, tmp_path, prediction_test):
                 model_runner, feat, random_seed, return_representations, callback
             ),
         ),
-        mock.patch("cyberchipped_fold.colabfold.run_mmseqs2", mock_run_mmseqs2),
+        mock.patch("folding.colabfold.run_mmseqs2", mock_run_mmseqs2),
     ):
         run(
             queries,

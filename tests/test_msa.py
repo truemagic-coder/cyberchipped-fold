@@ -1,6 +1,6 @@
 from unittest import mock
 
-from cyberchipped_fold.batch import get_msa_and_templates
+from folding.batch import get_msa_and_templates
 from tests.mock import MMseqs2Mock
 
 
@@ -13,7 +13,7 @@ def test_get_msa_and_templates(pytestconfig, caplog, tmp_path):
         ("single_sequence", "single_sequence", 2),
     ]:
         mmseqs2mock = MMseqs2Mock(pytestconfig.rootpath, f"get_msa_{tag}")
-        with mock.patch("cyberchipped_fold.colabfold.run_mmseqs2", mmseqs2mock.mock_run_mmseqs2):
+        with mock.patch("folding.colabfold.run_mmseqs2", mmseqs2mock.mock_run_mmseqs2):
             (
                 unpaired_msa,
                 paired_msa,

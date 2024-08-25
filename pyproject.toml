@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "cyberchipped-fold"
+name = "folding"
 version = "0.0.1"
 description = "ColabFold modified for AlphaFold2 and local installation"
 authors = ["Bevan Hunt"]
@@ -10,7 +10,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
-packages = [{include = "cyberchipped_fold"}]
+packages = [{include = "folding"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
@@ -31,6 +31,7 @@ dm-haiku = "^0.0.12"
 importlib-metadata = "^4.8.2"
 torch = "*"
 
+
 [tool.poetry.dev-dependencies]
 ruff = "^0.5.6"
 jupyter = "^1.0.0"
@@ -48,10 +49,10 @@ alphafold-minus-jax = ["alphafold-colabfold"]
 addopts = "--tb=short"
 
 [tool.poetry.scripts]
-colabfold_batch = 'cyberchipped_fold.batch:main'
-colabfold_search = 'cyberchipped_fold.mmseqs.search:main'
-colabfold_split_msas = 'cyberchipped_fold.mmseqs.split_msas:main'
-colabfold_relax = 'cyberchipped_fold.relax:main'
+folding-batch = 'folding.batch:main'
+folding-search = 'folding.mmseqs.search:main'
+folding-split_msas = 'folding.mmseqs.split_msas:main'
+folding-relax = 'folding.relax:main'
 
 [tool.ruff]
 linength = 120
@@ -63,7 +64,7 @@ ignore = []
 "__init__.py" = ["F401"]
 
 [tool.ruff.isort]
-known-first-party = ["cyberchipped_fold"]
+known-first-party = ["folding"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0,<2.0.0"]

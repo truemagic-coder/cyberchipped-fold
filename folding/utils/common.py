@@ -64,7 +64,7 @@ def safe_filename(file: str) -> str:
 
 def get_commit() -> Optional[str]:
     try:
-        text = distribution("cyberchipped_fold").read_text("direct_url.json")
+        text = distribution("folding").read_text("direct_url.json")
         if not text:
             return None
         direct_url = json.loads(text)
