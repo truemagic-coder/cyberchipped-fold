@@ -20,8 +20,7 @@ conda create -p "$CYBERFOLDDIR/folding-conda" -c conda-forge -c bioconda \
 conda activate "$CYBERFOLDDIR/folding-conda"
 
 # install folding and Jaxlib (AlphaFold2 only)
-"$CYBERFOLDDIR/folding-conda/bin/pip" install --no-warn-conflicts \
-    "folding[alphafold-minus-jax] @ git+https://github.com/truemagic-coder/folding"
+"$CYBERFOLDDIR/folding-conda/bin/pip" install --no-warn-conflicts "folding[alphafold-minus-jax]
 "$CYBERFOLDDIR/folding-conda/bin/pip" install --upgrade "jax[cuda12]"==0.4.28
 "$CYBERFOLDDIR/folding-conda/bin/pip" install --upgrade tensorflow
 "$CYBERFOLDDIR/folding-conda/bin/pip" install silence_tensorflow
