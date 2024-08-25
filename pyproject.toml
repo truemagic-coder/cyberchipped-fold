@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "folding"
-version = "0.0.4"
+version = "0.0.5"
 description = "ColabFold modified for AlphaFold2 and local installation"
 authors = ["Bevan Hunt"]
 readme = "README.md"
