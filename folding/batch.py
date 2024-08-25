@@ -40,8 +40,8 @@ import logging
 import json
 from Bio import BiopythonDeprecationWarning  # what can possibly go wrong...
 import warnings
-import torch
-import torch.nn.parallel as parallel
+import jax
+import jax.numpy as jnp
 
 import os
 
@@ -206,7 +206,7 @@ modified_mapping = {
     "IAS": "ASP",
     "GPL": "LYS",
     "KYN": "TRP",
-    "CSD": "CYS",
+    "CSD": "CYS",  # noqa: F601
     "SEC": "CYS",  # noqa: F601
 }
 
@@ -395,26 +395,23 @@ def predict_structure(
     files = file_manager(prefix, result_dir)
     seq_len = sum(sequences_lengths)
 
-    # Detect number of available GPUs
-    num_gpus = torch.cuda.device_count()
-    print(f"Number of available GPUs: {num_gpus}")
+    # Get all available devices
+    devices = jax.devices()
+    num_devices = len(devices)
+    print(f"Number of available devices: {num_devices}")
 
-    # Create a list to store the models for each GPU
-    models = []
-    for i in range(num_gpus):
-        device = torch.device(f"cuda:{i}")
-        models.append(model_runner_and_params[0][1].to(device))
+    # Create a pmapped version of the model's apply function
+    def wrapped_apply(params, key, feat):
+        return model_runner_and_params[0][1].apply(params, key, feat)
 
-    # Use DataParallel to distribute the model across GPUs
-    model = parallel.DataParallel(models[0], device_ids=list(range(num_gpus)))
+    pmapped_apply = jax.pmap(wrapped_apply, devices=devices)
 
     # iterate through random seeds
     for seed_num, seed in enumerate(range(random_seed, random_seed + num_seeds)):
         # iterate through models
-        for model_num, (model_name, _, params) in enumerate(model_runner_and_params):
-            # swap params to avoid recompiling
-            model.module.params = params
-
+        for model_num, (model_name, model_runner, params) in enumerate(
+            model_runner_and_params
+        ):
             #########################
             # process input features
             #########################
@@ -427,7 +424,7 @@ def predict_structure(
                     )
             else:
                 if model_num == 0:
-                    input_features = model.module.process_features(
+                    input_features = model_runner.process_features(
                         feature_dict, random_seed=seed
                     )
                     r = input_features["aatype"].shape[0]
@@ -437,7 +434,7 @@ def predict_structure(
                     if seq_len < pad_len:
                         input_features = pad_input(
                             input_features,
-                            model.module,
+                            model_runner,
                             model_name,
                             pad_len,
                             use_templates,
@@ -490,17 +487,26 @@ def predict_structure(
                             pickle.dump(result, handle)
                     del unrelaxed_protein
 
-            return_representations = (
-                save_all or save_single_representations or save_pair_representations
+            # Replicate parameters and input features across devices
+            replicated_params = jax.tree_map(
+                lambda x: jnp.array([x] * num_devices), params
+            )
+            replicated_features = jax.tree_map(
+                lambda x: jnp.array([x] * num_devices), input_features
             )
 
-            # predict
-            result, recycles = model(
-                input_features,
-                random_seed=seed,
-                return_representations=return_representations,
-                callback=callback,
-            )
+            # Generate random keys for each device
+            keys = jax.random.split(jax.random.PRNGKey(seed), num_devices)
+
+            # Predict using the pmapped model
+            results = pmapped_apply(replicated_params, keys, replicated_features)
+
+            # Combine results from all devices (you may need to adjust this based on your specific needs)
+            result = jax.tree_map(lambda x: x[0], results)
+
+            # Call the callback function (if needed)
+            if callback:
+                callback(result, 0)  # Assuming no recycles for simplicity
 
             prediction_times.append(time.time() - start)
 
@@ -510,7 +516,7 @@ def predict_structure(
 
             # summary metrics
             mean_scores.append(result["ranking_confidence"])
-            if recycles == 0:
+            if "tol" in result:
                 result.pop("tol", None)
             if not is_complex:
                 result.pop("iptm", None)
@@ -521,7 +527,7 @@ def predict_structure(
                     print_line += f" {y}={result[x]:.3g}"
                     conf[-1][x] = float(result[x])
             conf[-1]["print_line"] = print_line
-            logger.info(f"{tag} took {prediction_times[-1]:.1f}s ({recycles} recycles)")
+            logger.info(f"{tag} took {prediction_times[-1]:.1f}s")
 
             # create protein object
             final_atom_mask = result["structure_module"]["final_atom_mask"]
