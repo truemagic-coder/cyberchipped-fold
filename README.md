@@ -1,5 +1,7 @@
 # Folding
 
+[![PyPI - Version](https://img.shields.io/pypi/v/nemo-agent)](https://pypi.org/project/folding/)
+
 Folding is a streamlined version of ColabFold that focuses on running AlphaFold2 locally on Linux systems. It combines the power of ColabFold and LocalColabFold to provide an easy-to-use tool for protein structure prediction.
 
 ## Features
