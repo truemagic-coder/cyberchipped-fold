@@ -41,6 +41,6 @@ popd
 echo "Download of AlphaFold2 weights finished."
 echo "------------------------------------------"
 echo "Installation of folding finished."
-echo "Add ${CYBERFOLDDIR}/folding-conda/bin to your PATH environment variable to run 'colabfold_batch' and 'colabfold_search'."
+echo "Add ${CYBERFOLDDIR}/folding-conda/bin to your PATH environment variable to run 'folding-batch' and 'folding-search'."
 echo -e "i.e. for Bash:\n\texport PATH=\"${CYBERFOLDDIR}/folding-conda/bin:\$PATH\""
-echo "For more details, please run 'colabfold_batch --help' or 'colabfold_search --help'."
+echo "For more details, please run 'folding-batch --help' or 'folding-search --help'."
