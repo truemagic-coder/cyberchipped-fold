@@ -40,14 +40,17 @@ import logging
 import json
 from Bio import BiopythonDeprecationWarning  # what can possibly go wrong...
 import warnings
+import torch
+import torch.nn.parallel as parallel
 
 import os
+
 ENV = {"TF_FORCE_UNIFIED_MEMORY": "1", "XLA_PYTHON_CLIENT_MEM_FRACTION": "4.0"}
 for k, v in ENV.items():
     if k not in os.environ:
         os.environ[k] = v
 
-warnings.simplefilter(action='ignore', category=BiopythonDeprecationWarning)
+warnings.simplefilter(action="ignore", category=BiopythonDeprecationWarning)
 
 # delay imports of tensorflow, jax and numpy
 # loading these for type checking only can take around 10 seconds just to show a CLI usage message
@@ -62,10 +65,8 @@ logger = logging.getLogger(__name__)
 
 # from jax 0.4.6, jax._src.lib.xla_bridge moved to jax._src.xla_bridge
 # suppress warnings: Unable to initialize backend 'rocm' or 'tpu'
-logging.getLogger('jax._src.xla_bridge').addFilter(
-    lambda _: False)  # jax >=0.4.6
-logging.getLogger('jax._src.lib.xla_bridge').addFilter(
-    lambda _: False)  # jax < 0.4.5
+logging.getLogger("jax._src.xla_bridge").addFilter(lambda _: False)  # jax >=0.4.6
+logging.getLogger("jax._src.lib.xla_bridge").addFilter(lambda _: False)  # jax < 0.4.5
 
 
 def mk_mock_template(
@@ -82,8 +83,7 @@ def mk_mock_template(
     templates_all_atom_positions = np.zeros(
         (ln, templates.residue_constants.atom_type_num, 3)
     )
-    templates_all_atom_masks = np.zeros(
-        (ln, templates.residue_constants.atom_type_num))
+    templates_all_atom_masks = np.zeros((ln, templates.residue_constants.atom_type_num))
     templates_aatype = templates.residue_constants.sequence_to_onehot(
         output_templates_sequence, templates.residue_constants.HHBLITS_AA_TO_ID
     )
@@ -143,8 +143,7 @@ def validate_and_fix_mmcif(cif_file: Path):
     ]
     for r in required:
         if r not in cif_dict:
-            raise ValueError(
-                f"mmCIF file {cif_file} is missing required field {r}.")
+            raise ValueError(f"mmCIF file {cif_file} is missing required field {r}.")
     if "_pdbx_audit_revision_history.revision_date" not in cif_dict:
         logger.info(
             f"Adding missing field revision_date to {cif_file}. Backing up original file to {cif_file}.bak."
@@ -155,20 +154,60 @@ def validate_and_fix_mmcif(cif_file: Path):
 
 
 modified_mapping = {
-    "MSE": "MET", "MLY": "LYS", "FME": "MET", "HYP": "PRO",
-    "TPO": "THR", "CSO": "CYS", "SEP": "SER", "M3L": "LYS",
-    "HSK": "HIS", "SAC": "SER", "PCA": "GLU", "DAL": "ALA",
-    "CME": "CYS", "CSD": "CYS", "OCS": "CYS", "DPR": "PRO",
-    "B3K": "LYS", "ALY": "LYS", "YCM": "CYS", "MLZ": "LYS",
-    "4BF": "TYR", "KCX": "LYS", "B3E": "GLU", "B3D": "ASP",
-    "HZP": "PRO", "CSX": "CYS", "BAL": "ALA", "HIC": "HIS",
-    "DBZ": "ALA", "DCY": "CYS", "DVA": "VAL", "NLE": "LEU",
-    "SMC": "CYS", "AGM": "ARG", "B3A": "ALA", "DAS": "ASP",
-    "DLY": "LYS", "DSN": "SER", "DTH": "THR", "GL3": "GLY",
-    "HY3": "PRO", "LLP": "LYS", "MGN": "GLN", "MHS": "HIS",
-    "TRQ": "TRP", "B3Y": "TYR", "PHI": "PHE", "PTR": "TYR",
-    "TYS": "TYR", "IAS": "ASP", "GPL": "LYS", "KYN": "TRP",
-    "CSD": "CYS", "SEC": "CYS"  # noqa: F601
+    "MSE": "MET",
+    "MLY": "LYS",
+    "FME": "MET",
+    "HYP": "PRO",
+    "TPO": "THR",
+    "CSO": "CYS",
+    "SEP": "SER",
+    "M3L": "LYS",
+    "HSK": "HIS",
+    "SAC": "SER",
+    "PCA": "GLU",
+    "DAL": "ALA",
+    "CME": "CYS",
+    "CSD": "CYS",
+    "OCS": "CYS",
+    "DPR": "PRO",
+    "B3K": "LYS",
+    "ALY": "LYS",
+    "YCM": "CYS",
+    "MLZ": "LYS",
+    "4BF": "TYR",
+    "KCX": "LYS",
+    "B3E": "GLU",
+    "B3D": "ASP",
+    "HZP": "PRO",
+    "CSX": "CYS",
+    "BAL": "ALA",
+    "HIC": "HIS",
+    "DBZ": "ALA",
+    "DCY": "CYS",
+    "DVA": "VAL",
+    "NLE": "LEU",
+    "SMC": "CYS",
+    "AGM": "ARG",
+    "B3A": "ALA",
+    "DAS": "ASP",
+    "DLY": "LYS",
+    "DSN": "SER",
+    "DTH": "THR",
+    "GL3": "GLY",
+    "HY3": "PRO",
+    "LLP": "LYS",
+    "MGN": "GLN",
+    "MHS": "HIS",
+    "TRQ": "TRP",
+    "B3Y": "TYR",
+    "PHI": "PHE",
+    "PTR": "TYR",
+    "TYS": "TYR",
+    "IAS": "ASP",
+    "GPL": "LYS",
+    "KYN": "TRP",
+    "CSD": "CYS",
+    "SEC": "CYS",  # noqa: F601
 }
 
 
@@ -221,9 +260,7 @@ def mk_hhsearch_db(template_dir: str):
         template_path.joinpath("pdb70_cs219.ffindex"), "w"
     ) as cs219_index, open(
         template_path.joinpath("pdb70_a3m.ffindex"), "w"
-    ) as a3m_index, open(
-        template_path.joinpath("pdb70_cs219.ffdata"), "w"
-    ) as cs219:
+    ) as a3m_index, open(template_path.joinpath("pdb70_cs219.ffdata"), "w") as cs219:
         n = 1000000
         index_offset = 0
         cif_files = template_path.glob("*.cif")
@@ -236,7 +273,8 @@ def mk_hhsearch_db(template_dir: str):
             models = list(structure.get_models())
             if len(models) != 1:
                 logger.warning(
-                    f"WARNING: Found {len(models)} models in {cif_file}. The first model will be used as a template.", )
+                    f"WARNING: Found {len(models)} models in {cif_file}. The first model will be used as a template.",
+                )
                 # raise ValueError(
                 #     f"Only single model PDBs are supported. Found {len(models)} models in {cif_file}."
                 # )
@@ -245,8 +283,10 @@ def mk_hhsearch_db(template_dir: str):
                 amino_acid_res = []
                 for res in chain:
                     if res.id[2] != " ":
-                        logger.warning(f"WARNING: Found insertion code at chain {chain.id} and residue index {res.id[1]} of {cif_file}. "
-                                       "This file cannot be used as a template.")
+                        logger.warning(
+                            f"WARNING: Found insertion code at chain {chain.id} and residue index {res.id[1]} of {cif_file}. "
+                            "This file cannot be used as a template."
+                        )
                         continue
                         # raise ValueError(
                         #     f"PDB {cif_file} contains an insertion code at chain {chain.id} and residue "
@@ -355,14 +395,25 @@ def predict_structure(
     files = file_manager(prefix, result_dir)
     seq_len = sum(sequences_lengths)
 
+    # Detect number of available GPUs
+    num_gpus = torch.cuda.device_count()
+    print(f"Number of available GPUs: {num_gpus}")
+
+    # Create a list to store the models for each GPU
+    models = []
+    for i in range(num_gpus):
+        device = torch.device(f"cuda:{i}")
+        models.append(model_runner_and_params[0][1].to(device))
+
+    # Use DataParallel to distribute the model across GPUs
+    model = parallel.DataParallel(models[0], device_ids=list(range(num_gpus)))
+
     # iterate through random seeds
-    for seed_num, seed in enumerate(range(random_seed, random_seed+num_seeds)):
-
+    for seed_num, seed in enumerate(range(random_seed, random_seed + num_seeds)):
         # iterate through models
-        for model_num, (model_name, model_runner, params) in enumerate(model_runner_and_params):
-
+        for model_num, (model_name, _, params) in enumerate(model_runner_and_params):
             # swap params to avoid recompiling
-            model_runner.params = params
+            model.module.params = params
 
             #########################
             # process input features
@@ -371,18 +422,26 @@ def predict_structure(
                 if model_num == 0 and seed_num == 0:
                     # TODO: add pad_input_mulitmer()
                     input_features = feature_dict
-                    input_features["asym_id"] = input_features["asym_id"] - \
-                        input_features["asym_id"][..., 0]
+                    input_features["asym_id"] = (
+                        input_features["asym_id"] - input_features["asym_id"][..., 0]
+                    )
             else:
                 if model_num == 0:
-                    input_features = model_runner.process_features(
-                        feature_dict, random_seed=seed)
+                    input_features = model.module.process_features(
+                        feature_dict, random_seed=seed
+                    )
                     r = input_features["aatype"].shape[0]
                     input_features["asym_id"] = np.tile(
-                        feature_dict["asym_id"], r).reshape(r, -1)
+                        feature_dict["asym_id"], r
+                    ).reshape(r, -1)
                     if seq_len < pad_len:
-                        input_features = pad_input(input_features, model_runner,
-                                                   model_name, pad_len, use_templates)
+                        input_features = pad_input(
+                            input_features,
+                            model.module,
+                            model_name,
+                            pad_len,
+                            use_templates,
+                        )
                         logger.info(f"Padding length to {pad_len}")
 
             tag = f"{model_type}_{model_name}_seed_{seed:03d}"
@@ -401,7 +460,12 @@ def predict_structure(
                 if not is_complex:
                     result.pop("iptm", None)
                 print_line = ""
-                for x, y in [["mean_plddt", "pLDDT"], ["ptm", "pTM"], ["iptm", "ipTM"], ["tol", "tol"]]:
+                for x, y in [
+                    ["mean_plddt", "pLDDT"],
+                    ["ptm", "pTM"],
+                    ["iptm", "ipTM"],
+                    ["tol", "tol"],
+                ]:
                     if x in result:
                         print_line += f" {y}={result[x]:.3g}"
                 logger.info(f"{tag} recycle={recycles}{print_line}")
@@ -411,24 +475,32 @@ def predict_structure(
                     b_factors = result["plddt"][:, None] * final_atom_mask
                     unrelaxed_protein = protein.from_prediction(
                         features=input_features,
-                        result=result, b_factors=b_factors,
-                        remove_leading_feature_dimension=("multimer" not in model_type))
+                        result=result,
+                        b_factors=b_factors,
+                        remove_leading_feature_dimension=("multimer" not in model_type),
+                    )
                     files.get("unrelaxed", f"r{recycles}.pdb").write_text(
-                        protein.to_pdb(unrelaxed_protein))
+                        protein.to_pdb(unrelaxed_protein)
+                    )
 
                     if save_all:
-                        with files.get("all", f"r{recycles}.pickle").open("wb") as handle:
+                        with files.get("all", f"r{recycles}.pickle").open(
+                            "wb"
+                        ) as handle:
                             pickle.dump(result, handle)
                     del unrelaxed_protein
 
-            return_representations = save_all or save_single_representations or save_pair_representations
+            return_representations = (
+                save_all or save_single_representations or save_pair_representations
+            )
 
             # predict
-            result, recycles = \
-                model_runner.predict(input_features,
-                                     random_seed=seed,
-                                     return_representations=return_representations,
-                                     callback=callback)
+            result, recycles = model(
+                input_features,
+                random_seed=seed,
+                return_representations=return_representations,
+                callback=callback,
+            )
 
             prediction_times.append(time.time() - start)
 
@@ -449,8 +521,7 @@ def predict_structure(
                     print_line += f" {y}={result[x]:.3g}"
                     conf[-1][x] = float(result[x])
             conf[-1]["print_line"] = print_line
-            logger.info(
-                f"{tag} took {prediction_times[-1]:.1f}s ({recycles} recycles)")
+            logger.info(f"{tag} took {prediction_times[-1]:.1f}s ({recycles} recycles)")
 
             # create protein object
             final_atom_mask = result["structure_module"]["final_atom_mask"]
@@ -459,12 +530,18 @@ def predict_structure(
                 features=input_features,
                 result=result,
                 b_factors=b_factors,
-                remove_leading_feature_dimension=("multimer" not in model_type))
+                remove_leading_feature_dimension=("multimer" not in model_type),
+            )
 
             # callback for visualization
             if prediction_callback is not None:
-                prediction_callback(unrelaxed_protein, sequences_lengths,
-                                    result, input_features, (tag, False))
+                prediction_callback(
+                    unrelaxed_protein,
+                    sequences_lengths,
+                    result,
+                    input_features,
+                    (tag, False),
+                )
 
             #########################
             # save results
@@ -480,11 +557,13 @@ def predict_structure(
                 with files.get("all", "pickle").open("wb") as handle:
                     pickle.dump(result, handle)
             if save_single_representations:
-                np.save(files.get("single_repr", "npy"),
-                        result["representations"]["single"])
+                np.save(
+                    files.get("single_repr", "npy"), result["representations"]["single"]
+                )
             if save_pair_representations:
-                np.save(files.get("pair_repr", "npy"),
-                        result["representations"]["pair"])
+                np.save(
+                    files.get("pair_repr", "npy"), result["representations"]["pair"]
+                )
 
             # write an easy-to-use format (pAE and pLDDT)
             with files.get("scores", "json").open("w") as handle:
@@ -492,8 +571,12 @@ def predict_structure(
                 scores = {"plddt": np.around(plddt.astype(float), 2).tolist()}
                 if "predicted_aligned_error" in result:
                     pae = result["predicted_aligned_error"][:seq_len, :seq_len]
-                    scores.update({"max_pae": pae.max().astype(float).item(),
-                                   "pae": np.around(pae.astype(float), 2).tolist()})
+                    scores.update(
+                        {
+                            "max_pae": pae.max().astype(float).item(),
+                            "pae": np.around(pae.astype(float), 2).tolist(),
+                        }
+                    )
                     for k in ["ptm", "iptm"]:
                         if k in conf[-1]:
                             scores[k] = np.around(conf[-1][k], 2).item()
@@ -538,7 +621,8 @@ def predict_structure(
                 tolerance=relax_tolerance,
                 stiffness=relax_stiffness,
                 max_outer_iterations=relax_max_outer_iterations,
-                use_gpu=use_gpu_relax)
+                use_gpu=use_gpu_relax,
+            )
             files.get("relaxed", "pdb").write_text(pdb_lines)
             logger.info(f"Relaxation took {(time.time() - start):.1f}s")
 
@@ -551,9 +635,7 @@ def predict_structure(
             file.rename(new_file)
             result_files.append(new_file)
 
-    return {"rank": rank,
-            "metric": metric,
-            "result_files": result_files}
+    return {"rank": rank, "metric": metric, "result_files": result_files}
 
 
 def parse_fasta(fasta_string: str) -> Tuple[List[str], List[str]]:
@@ -637,8 +719,7 @@ def get_queries(
             if not file.is_file():
                 continue
             if file.suffix.lower() not in [".a3m", ".fasta", ".faa"]:
-                logger.warning(
-                    f"non-fasta/a3m file in input directory: {file}")
+                logger.warning(f"non-fasta/a3m file in input directory: {file}")
                 continue
             (seqs, header) = parse_fasta(file.read_text())
             if len(seqs) == 0:
@@ -659,8 +740,7 @@ def get_queries(
                     queries.append((file.stem, query_sequence, None))
                 else:
                     # Complex mode
-                    queries.append(
-                        (file.stem, query_sequence.upper().split(":"), None))
+                    queries.append((file.stem, query_sequence.upper().split(":"), None))
 
     # sort by seq. len
     if sort_queries_by == "length":
@@ -705,8 +785,7 @@ def pair_sequences(
                     line = line.replace(">", "\t", 1)
                 a3m_line_paired[i] = a3m_line_paired[i] + line
             else:
-                a3m_line_paired[i] = a3m_line_paired[i] + \
-                    line * query_cardinality[n]
+                a3m_line_paired[i] = a3m_line_paired[i] + line * query_cardinality[n]
     return "\n".join(a3m_line_paired)
 
 
@@ -730,8 +809,7 @@ def pad_sequences(
                     a3m_lines_combined.append(a3m_line)
                 else:
                     a3m_lines_combined.append(
-                        "".join(_blank_seq[:pos] +
-                                [a3m_line] + _blank_seq[pos + 1:])
+                        "".join(_blank_seq[:pos] + [a3m_line] + _blank_seq[pos + 1 :])
                     )
             pos += 1
     return "\n".join(a3m_lines_combined)
@@ -750,8 +828,7 @@ def get_msa_and_templates(
     host_url: str = DEFAULT_API_SERVER,
     user_agent: str = "",
 ) -> Tuple[
-    Optional[List[str]], Optional[List[str]
-                                  ], List[str], List[int], List[Dict[str, Any]]
+    Optional[List[str]], Optional[List[str]], List[str], List[int], List[Dict[str, Any]]
 ]:
     from folding.colabfold import run_mmseqs2
 
@@ -813,16 +890,14 @@ def get_msa_and_templates(
                         query_seqs_unique[index],
                     )
                     if len(template_feature["template_domain_names"]) == 0:
-                        template_feature = mk_mock_template(
-                            query_seqs_unique[index])
+                        template_feature = mk_mock_template(query_seqs_unique[index])
                         logger.info(f"Sequence {index} found no templates")
                     else:
                         logger.info(
                             f"Sequence {index} found templates: {template_feature['template_domain_names'].astype(str).tolist()}"
                         )
                 else:
-                    template_feature = mk_mock_template(
-                        query_seqs_unique[index])
+                    template_feature = mk_mock_template(query_seqs_unique[index])
                     logger.info(f"Sequence {index} found no templates")
 
                 template_features.append(template_feature)
@@ -917,15 +992,13 @@ def process_multimer_features(
             chain_features, chain_id
         )
 
-    all_chain_features = pipeline_multimer.add_assembly_features(
-        all_chain_features)
+    all_chain_features = pipeline_multimer.add_assembly_features(all_chain_features)
     # np_example = feature_processing.pair_and_merge(
     #    all_chain_features=all_chain_features, is_prokaryote=is_prokaryote)
     feature_processing.process_unmerged_features(all_chain_features)
     np_chains_list = list(all_chain_features.values())
     # noinspection PyProtectedMember
-    pair_msa_sequences = not feature_processing._is_homomer_or_monomer(
-        np_chains_list)
+    pair_msa_sequences = not feature_processing._is_homomer_or_monomer(np_chains_list)
     chains = list(np_chains_list)
     chain_keys = chains[0].keys()
     updated_chains = []
@@ -952,8 +1025,7 @@ def process_multimer_features(
     # remove all features that are not present in all chains
     common_features = set([*np_chains_list[0]]).intersection(*np_chains_list)
     np_chains_list = [
-        {key: value for (key, value) in chain.items()
-         if key in common_features}
+        {key: value for (key, value) in chain.items() if key in common_features}
         for chain in np_chains_list
     ]
     np_example = feature_processing.msa_pairing.merge_chain_features(
@@ -980,11 +1052,9 @@ def pair_msa(
         )
     elif paired_msa is not None and unpaired_msa is not None:
         a3m_lines = (
-            pair_sequences(paired_msa, query_seqs_unique,
-                           query_seqs_cardinality)
+            pair_sequences(paired_msa, query_seqs_unique, query_seqs_cardinality)
             + "\n"
-            + pad_sequences(unpaired_msa, query_seqs_unique,
-                            query_seqs_cardinality)
+            + pad_sequences(unpaired_msa, query_seqs_unique, query_seqs_cardinality)
         )
     elif paired_msa is not None and unpaired_msa is None:
         a3m_lines = pair_sequences(
@@ -1005,11 +1075,9 @@ def generate_input_feature(
     model_type: str,
     max_seq: int,
 ) -> Tuple[Dict[str, Any], Dict[str, str]]:
-
     input_feature = {}
     domain_names = {}
     if is_complex and "multimer" not in model_type:
-
         full_sequence = ""
         Ls = []
         for sequence_index, sequence in enumerate(query_seqs_unique):
@@ -1019,15 +1087,17 @@ def generate_input_feature(
 
         # bugfix
         a3m_lines = f">0\n{full_sequence}\n"
-        a3m_lines += pair_msa(query_seqs_unique,
-                              query_seqs_cardinality, paired_msa, unpaired_msa)
+        a3m_lines += pair_msa(
+            query_seqs_unique, query_seqs_cardinality, paired_msa, unpaired_msa
+        )
 
         input_feature = build_monomer_feature(
-            full_sequence, a3m_lines, mk_mock_template(full_sequence))
-        input_feature["residue_index"] = np.concatenate(
-            [np.arange(L) for L in Ls])
+            full_sequence, a3m_lines, mk_mock_template(full_sequence)
+        )
+        input_feature["residue_index"] = np.concatenate([np.arange(L) for L in Ls])
         input_feature["asym_id"] = np.concatenate(
-            [np.full(L, n) for n, L in enumerate(Ls)])
+            [np.full(L, n) for n, L in enumerate(Ls)]
+        )
         if any(
             [
                 template != b"none"
@@ -1044,7 +1114,6 @@ def generate_input_feature(
         chain_cnt = 0
         # for each unique sequence
         for sequence_index, sequence in enumerate(query_seqs_unique):
-
             # get unpaired msa
             if unpaired_msa is None:
                 input_msa = f">{101 + sequence_index}\n{sequence}"
@@ -1052,7 +1121,8 @@ def generate_input_feature(
                 input_msa = unpaired_msa[sequence_index]
 
             feature_dict = build_monomer_feature(
-                sequence, input_msa, template_features[sequence_index])
+                sequence, input_msa, template_features[sequence_index]
+            )
 
             if "multimer" in model_type:
                 # get paired msa
@@ -1064,14 +1134,14 @@ def generate_input_feature(
 
             # for each copy
             for cardinality in range(0, query_seqs_cardinality[sequence_index]):
-                features_for_chain[protein.PDB_CHAIN_IDS[chain_cnt]
-                                   ] = feature_dict
+                features_for_chain[protein.PDB_CHAIN_IDS[chain_cnt]] = feature_dict
                 chain_cnt += 1
 
         if "multimer" in model_type:
             # combine features across all chains
             input_feature = process_multimer_features(
-                features_for_chain, min_num_seq=max_seq + 4)
+                features_for_chain, min_num_seq=max_seq + 4
+            )
             domain_names = {
                 chain: [
                     name.decode("UTF-8")
@@ -1083,7 +1153,8 @@ def generate_input_feature(
         else:
             input_feature = features_for_chain[protein.PDB_CHAIN_IDS[0]]
             input_feature["asym_id"] = np.zeros(
-                input_feature["aatype"].shape[0], dtype=int)
+                input_feature["aatype"].shape[0], dtype=int
+            )
             domain_names = {
                 protein.PDB_CHAIN_IDS[0]: [
                     name.decode("UTF-8")
@@ -1122,19 +1193,17 @@ def unserialize_msa(
     query_seqs_cardinality = tab_sep_entries[1].split(",")
     query_seqs_cardinality = list(map(int, query_seqs_cardinality))
     is_homooligomer = (
-        True if len(
-            query_seq_len) == 1 and query_seqs_cardinality[0] > 1 else False
+        True if len(query_seq_len) == 1 and query_seqs_cardinality[0] > 1 else False
     )
     is_single_protein = (
-        True if len(
-            query_seq_len) == 1 and query_seqs_cardinality[0] == 1 else False
+        True if len(query_seq_len) == 1 and query_seqs_cardinality[0] == 1 else False
     )
     query_seqs_unique = []
     prev_query_start = 0
     # we store the a3m with cardinality of 1
     for n, query_len in enumerate(query_seq_len):
         query_seqs_unique.append(
-            a3m_lines[2][prev_query_start: prev_query_start + query_len]
+            a3m_lines[2][prev_query_start : prev_query_start + query_len]
         )
         prev_query_start += query_len
     paired_msa = [""] * len(query_seq_len)
@@ -1185,8 +1254,7 @@ def unserialize_msa(
         num = 101
         paired_msa = [""] * query_seqs_cardinality[0]
         for i in range(0, query_seqs_cardinality[0]):
-            paired_msa[i] = ">" + str(num + i) + \
-                "\n" + query_seqs_unique[0] + "\n"
+            paired_msa[i] = ">" + str(num + i) + "\n" + query_seqs_unique[0] + "\n"
     if is_single_protein:
         paired_msa = None
     template_features = []
@@ -1213,8 +1281,7 @@ def msa_to_str(
     msa += ",".join(map(str, query_seqs_cardinality)) + "\n"
     # build msa with cardinality of 1, it makes it easier to parse and manipulate
     query_seqs_cardinality = [1 for _ in query_seqs_cardinality]
-    msa += pair_msa(query_seqs_unique, query_seqs_cardinality,
-                    paired_msa, unpaired_msa)
+    msa += pair_msa(query_seqs_unique, query_seqs_cardinality, paired_msa, unpaired_msa)
     return msa
 
 
@@ -1247,13 +1314,17 @@ def put_mmciffiles_into_resultdir(
             else:
                 pdb_id = line.split("\t")[1][0:4]
                 divided_pdb_id = pdb_id[1:3]
-                gzipped_divided_mmcif_file = local_pdb_path / \
-                    divided_pdb_id / (pdb_id + ".cif.gz")
+                gzipped_divided_mmcif_file = (
+                    local_pdb_path / divided_pdb_id / (pdb_id + ".cif.gz")
+                )
                 gzipped_mmcif_file = local_pdb_path / (pdb_id + ".cif.gz")
                 unzipped_mmcif_file = local_pdb_path / (pdb_id + ".cif")
                 result_file = result_dir / (pdb_id + ".cif")
-                possible_files = [gzipped_divided_mmcif_file,
-                                  gzipped_mmcif_file, unzipped_mmcif_file]
+                possible_files = [
+                    gzipped_divided_mmcif_file,
+                    gzipped_mmcif_file,
+                    unzipped_mmcif_file,
+                ]
                 for file in possible_files:
                     if file == gzipped_divided_mmcif_file or file == gzipped_mmcif_file:
                         if file.exists():
@@ -1267,8 +1338,7 @@ def put_mmciffiles_into_resultdir(
                             shutil.copyfile(file, result_file)
                             break
                 if not result_file.exists():
-                    print(
-                        f"WARNING: {pdb_id} does not exist in {local_pdb_path}.")
+                    print(f"WARNING: {pdb_id} does not exist in {local_pdb_path}.")
 
 
 def run(
@@ -1316,25 +1386,27 @@ def run(
     local_pdb_path: Optional[Path] = None,
     use_cluster_profile: bool = True,
     feature_dict_callback: Callable[[Any], Any] = None,
-    **kwargs
+    **kwargs,
 ):
     # check what device is available
     try:
         # check if TPU is available
         import jax.tools.colab_tpu
+
         jax.tools.colab_tpu.setup_tpu()
-        logger.info('Running on TPU')
+        logger.info("Running on TPU")
         use_gpu_relax = False
     except Exception:
-        if jax.local_devices()[0].platform == 'cpu':
+        if jax.local_devices()[0].platform == "cpu":
             logger.info("WARNING: no GPU detected, will be using CPU")
             use_gpu_relax = False
         else:
             import tensorflow as tf
+
             tf.get_logger().setLevel(logging.ERROR)
-            logger.info('Running on GPU')
+            logger.info("Running on GPU")
             # disable GPU on tensorflow
-            tf.config.set_visible_devices([], 'GPU')
+            tf.config.set_visible_devices([], "GPU")
 
     from folding.alphafold.models import load_models_and_params
     from folding.colabfold import plot_paes, plot_plddts
@@ -1346,13 +1418,14 @@ def run(
     model_type = set_model_type(is_complex, model_type)
 
     # backward-compatibility with old options
-    old_names = {"MMseqs2 (UniRef+Environmental)": "mmseqs2_uniref_env",
-                 "MMseqs2 (UniRef only)": "mmseqs2_uniref",
-                 "unpaired+paired": "unpaired_paired"}
+    old_names = {
+        "MMseqs2 (UniRef+Environmental)": "mmseqs2_uniref_env",
+        "MMseqs2 (UniRef only)": "mmseqs2_uniref",
+        "unpaired+paired": "unpaired_paired",
+    }
     msa_mode = old_names.get(msa_mode, msa_mode)
     pair_mode = old_names.get(pair_mode, pair_mode)
-    feature_dict_callback = kwargs.pop(
-        "input_features_callback", feature_dict_callback)
+    feature_dict_callback = kwargs.pop("input_features_callback", feature_dict_callback)
     use_dropout = kwargs.pop("training", use_dropout)
     use_fuse = kwargs.pop("use_fuse", True)
     use_bfloat16 = kwargs.pop("use_bfloat16", True)
@@ -1390,16 +1463,15 @@ def run(
     # 508 1152 = alphafold-multimer_v3 (models 4,5)
     # 252 1152 = alphafold-multimer_v[1,2]
 
-    def set_if(x, y): return y if x is None else x
+    def set_if(x, y):
+        return y if x is None else x
+
     if model_type in ["alphafold2_multimer_v1", "alphafold2_multimer_v2"]:
-        (max_seq, max_extra_seq) = (
-            set_if(max_seq, 252), set_if(max_extra_seq, 1152))
+        (max_seq, max_extra_seq) = (set_if(max_seq, 252), set_if(max_extra_seq, 1152))
     elif model_type == "alphafold2_multimer_v3":
-        (max_seq, max_extra_seq) = (
-            set_if(max_seq, 508), set_if(max_extra_seq, 2048))
+        (max_seq, max_extra_seq) = (set_if(max_seq, 508), set_if(max_extra_seq, 2048))
     else:
-        (max_seq, max_extra_seq) = (
-            set_if(max_seq, 512), set_if(max_extra_seq, 5120))
+        (max_seq, max_extra_seq) = (set_if(max_seq, 512), set_if(max_extra_seq, 5120))
 
     if msa_mode == "single_sequence":
         num_seqs = 1
@@ -1455,7 +1527,12 @@ def run(
     use_amber = num_models > 0 and num_relax > 0
 
     bibtex_file = write_bibtex(
-        model_type if num_models > 0 else "", use_msa, use_env, use_templates, use_amber, result_dir
+        model_type if num_models > 0 else "",
+        use_msa,
+        use_env,
+        use_templates,
+        use_amber,
+        result_dir,
     )
 
     if pdb_hit_file is not None:
@@ -1464,7 +1541,8 @@ def run(
         else:
             custom_template_path = result_dir / "templates"
             put_mmciffiles_into_resultdir(
-                pdb_hit_file, local_pdb_path, custom_template_path)
+                pdb_hit_file, local_pdb_path, custom_template_path
+            )
 
     if custom_template_path is not None:
         mk_hhsearch_db(custom_template_path)
@@ -1477,8 +1555,7 @@ def run(
         if jobname_prefix is not None:
             # pad job number based on number of queries
             fill = len(str(len(queries)))
-            jobname = safe_filename(jobname_prefix) + \
-                "_" + str(job_number).zfill(fill)
+            jobname = safe_filename(jobname_prefix) + "_" + str(job_number).zfill(fill)
             job_number += 1
         else:
             jobname = safe_filename(raw_jobname)
@@ -1499,43 +1576,88 @@ def run(
 
         seq_len = len("".join(query_sequence))
         logger.info(
-            f"Query {job_number + 1}/{len(queries)}: {jobname} (length {seq_len})")
+            f"Query {job_number + 1}/{len(queries)}: {jobname} (length {seq_len})"
+        )
 
         ###########################################
         # generate MSA (a3m_lines) and templates
         ###########################################
         try:
-            pickled_msa_and_templates = result_dir.joinpath(
-                f"{jobname}.pickle")
+            pickled_msa_and_templates = result_dir.joinpath(f"{jobname}.pickle")
             if pickled_msa_and_templates.is_file():
-                with open(pickled_msa_and_templates, 'rb') as f:
-                    (unpaired_msa, paired_msa, query_seqs_unique,
-                     query_seqs_cardinality, template_features) = pickle.load(f)
+                with open(pickled_msa_and_templates, "rb") as f:
+                    (
+                        unpaired_msa,
+                        paired_msa,
+                        query_seqs_unique,
+                        query_seqs_cardinality,
+                        template_features,
+                    ) = pickle.load(f)
                 logger.info(f"Loaded {pickled_msa_and_templates}")
 
             else:
                 if a3m_lines is None:
-                    (unpaired_msa, paired_msa, query_seqs_unique, query_seqs_cardinality, template_features) \
-                        = get_msa_and_templates(jobname, query_sequence, a3m_lines, result_dir, msa_mode, use_templates,
-                                                custom_template_path, pair_mode, pairing_strategy, host_url, user_agent)
+                    (
+                        unpaired_msa,
+                        paired_msa,
+                        query_seqs_unique,
+                        query_seqs_cardinality,
+                        template_features,
+                    ) = get_msa_and_templates(
+                        jobname,
+                        query_sequence,
+                        a3m_lines,
+                        result_dir,
+                        msa_mode,
+                        use_templates,
+                        custom_template_path,
+                        pair_mode,
+                        pairing_strategy,
+                        host_url,
+                        user_agent,
+                    )
 
                 elif a3m_lines is not None:
-                    (unpaired_msa, paired_msa, query_seqs_unique, query_seqs_cardinality, template_features) \
-                        = unserialize_msa(a3m_lines, query_sequence)
+                    (
+                        unpaired_msa,
+                        paired_msa,
+                        query_seqs_unique,
+                        query_seqs_cardinality,
+                        template_features,
+                    ) = unserialize_msa(a3m_lines, query_sequence)
                     if use_templates:
-                        (_, _, _, _, template_features) \
-                            = get_msa_and_templates(jobname, query_seqs_unique, unpaired_msa, result_dir, 'single_sequence', use_templates,
-                                                    custom_template_path, pair_mode, pairing_strategy, host_url, user_agent)
+                        (_, _, _, _, template_features) = get_msa_and_templates(
+                            jobname,
+                            query_seqs_unique,
+                            unpaired_msa,
+                            result_dir,
+                            "single_sequence",
+                            use_templates,
+                            custom_template_path,
+                            pair_mode,
+                            pairing_strategy,
+                            host_url,
+                            user_agent,
+                        )
 
                 if num_models == 0:
-                    with open(pickled_msa_and_templates, 'wb') as f:
-                        pickle.dump((unpaired_msa, paired_msa, query_seqs_unique,
-                                    query_seqs_cardinality, template_features), f)
+                    with open(pickled_msa_and_templates, "wb") as f:
+                        pickle.dump(
+                            (
+                                unpaired_msa,
+                                paired_msa,
+                                query_seqs_unique,
+                                query_seqs_cardinality,
+                                template_features,
+                            ),
+                            f,
+                        )
                     logger.info(f"Saved {pickled_msa_and_templates}")
 
             # save a3m
-            msa = msa_to_str(unpaired_msa, paired_msa,
-                             query_seqs_unique, query_seqs_cardinality)
+            msa = msa_to_str(
+                unpaired_msa, paired_msa, query_seqs_unique, query_seqs_cardinality
+            )
             result_dir.joinpath(f"{jobname}.a3m").write_text(msa)
 
         except Exception as e:
@@ -1546,17 +1668,23 @@ def run(
         # generate features
         #######################
         try:
-            (feature_dict, domain_names) \
-                = generate_input_feature(query_seqs_unique, query_seqs_cardinality, unpaired_msa, paired_msa,
-                                         template_features, is_complex, model_type, max_seq=max_seq)
+            (feature_dict, domain_names) = generate_input_feature(
+                query_seqs_unique,
+                query_seqs_cardinality,
+                unpaired_msa,
+                paired_msa,
+                template_features,
+                is_complex,
+                model_type,
+                max_seq=max_seq,
+            )
 
             # to allow display of MSA info during colab/chimera run (thanks tomgoddard)
             if feature_dict_callback is not None:
                 feature_dict_callback(feature_dict)
 
         except Exception as e:
-            logger.exception(
-                f"Could not generate input features {jobname}: {e}")
+            logger.exception(f"Could not generate input features {jobname}: {e}")
             continue
 
         ###############
@@ -1568,13 +1696,14 @@ def run(
         # make msa plot
         msa_plot = plot_msa_v2(feature_dict, dpi=dpi)
         coverage_png = result_dir.joinpath(f"{jobname}_coverage.png")
-        msa_plot.savefig(str(coverage_png), bbox_inches='tight')
+        msa_plot.savefig(str(coverage_png), bbox_inches="tight")
         msa_plot.close()
         result_files.append(coverage_png)
 
         if use_templates:
             templates_file = result_dir.joinpath(
-                f"{jobname}_template_domain_names.json")
+                f"{jobname}_template_domain_names.json"
+            )
             templates_file.write_text(json.dumps(domain_names))
             result_files.append(templates_file)
 
@@ -1587,8 +1716,13 @@ def run(
         if num_models > 0:
             try:
                 # get list of lengths
-                query_sequence_len_array = sum([[len(x)] * y
-                                                for x, y in zip(query_seqs_unique, query_seqs_cardinality)], [])
+                query_sequence_len_array = sum(
+                    [
+                        [len(x)] * y
+                        for x, y in zip(query_seqs_unique, query_seqs_cardinality)
+                    ],
+                    [],
+                )
 
                 # decide how much to pad (to avoid recompiling)
                 if seq_len > pad_len:
@@ -1604,8 +1738,7 @@ def run(
                     if len(queries) == 1 and msa_mode != "single_sequence":
                         # get number of sequences
                         if "msa_mask" in feature_dict:
-                            num_seqs = int(
-                                sum(feature_dict["msa_mask"].max(-1) == 1))
+                            num_seqs = int(sum(feature_dict["msa_mask"].max(-1) == 1))
                         else:
                             num_seqs = int(len(feature_dict["msa"]))
 
@@ -1614,10 +1747,10 @@ def run(
 
                         # adjust max settings
                         max_seq = min(num_seqs, max_seq)
-                        max_extra_seq = max(
-                            min(num_seqs - max_seq, max_extra_seq), 1)
+                        max_extra_seq = max(min(num_seqs - max_seq, max_extra_seq), 1)
                         logger.info(
-                            f"Setting max_seq={max_seq}, max_extra_seq={max_extra_seq}")
+                            f"Setting max_seq={max_seq}, max_extra_seq={max_extra_seq}"
+                        )
 
                     model_runner_and_params = load_models_and_params(
                         num_models=num_models,
@@ -1672,8 +1805,7 @@ def run(
 
             except RuntimeError as e:
                 # This normally happens on OOM. TODO: Filter for the specific OOM error message
-                logger.error(
-                    f"Could not predict {jobname}. Not Enough GPU memory? {e}")
+                logger.error(f"Could not predict {jobname}. Not Enough GPU memory? {e}")
                 continue
 
             ###############
@@ -1690,25 +1822,37 @@ def run(
             # write alphafold-db format (pAE)
             if "pae" in scores[0]:
                 af_pae_file = result_dir.joinpath(
-                    f"{jobname}_predicted_aligned_error_v1.json")
-                af_pae_file.write_text(json.dumps({
-                    "predicted_aligned_error": scores[0]["pae"],
-                    "max_predicted_aligned_error": scores[0]["max_pae"]}))
+                    f"{jobname}_predicted_aligned_error_v1.json"
+                )
+                af_pae_file.write_text(
+                    json.dumps(
+                        {
+                            "predicted_aligned_error": scores[0]["pae"],
+                            "max_predicted_aligned_error": scores[0]["max_pae"],
+                        }
+                    )
+                )
                 result_files.append(af_pae_file)
 
                 # make pAE plots
-                paes_plot = plot_paes([np.asarray(x["pae"]) for x in scores],
-                                      Ls=query_sequence_len_array, dpi=dpi)
+                paes_plot = plot_paes(
+                    [np.asarray(x["pae"]) for x in scores],
+                    Ls=query_sequence_len_array,
+                    dpi=dpi,
+                )
                 pae_png = result_dir.joinpath(f"{jobname}_pae.png")
-                paes_plot.savefig(str(pae_png), bbox_inches='tight')
+                paes_plot.savefig(str(pae_png), bbox_inches="tight")
                 paes_plot.close()
                 result_files.append(pae_png)
 
             # make pLDDT plot
-            plddt_plot = plot_plddts([np.asarray(x["plddt"]) for x in scores],
-                                     Ls=query_sequence_len_array, dpi=dpi)
+            plddt_plot = plot_plddts(
+                [np.asarray(x["plddt"]) for x in scores],
+                Ls=query_sequence_len_array,
+                dpi=dpi,
+            )
             plddt_png = result_dir.joinpath(f"{jobname}_plddt.png")
-            plddt_plot.savefig(str(plddt_png), bbox_inches='tight')
+            plddt_plot.savefig(str(plddt_png), bbox_inches="tight")
             plddt_plot.close()
             result_files.append(plddt_png)
 
@@ -1735,9 +1879,9 @@ def set_model_type(is_complex: bool, model_type: str) -> str:
         "AlphaFold2-multimer-v1": "alphafold2_multimer_v1",
         "AlphaFold2-multimer-v2": "alphafold2_multimer_v2",
         "AlphaFold2-multimer-v3": "alphafold2_multimer_v3",
-        "AlphaFold2-ptm":        "alphafold2_ptm",
-        "AlphaFold2":            "alphafold2",
-        "DeepFold":              "deepfold_v1",
+        "AlphaFold2-ptm": "alphafold2_ptm",
+        "AlphaFold2": "alphafold2",
+        "DeepFold": "deepfold_v1",
     }
     model_type = old_names.get(model_type, model_type)
     if model_type == "auto":
@@ -1798,7 +1942,7 @@ def main():
         action="store_true",
         help="Query PDB templates from the MSA server. "
         'If this parameter is not set, "--custom-template-path" and "--pdb-hit-file" will not be used. '
-        "Warning: This can result in the MSA server being queried with A3M input. "
+        "Warning: This can result in the MSA server being queried with A3M input. ",
     )
     msa_group.add_argument(
         "--custom-template-path",
@@ -1919,8 +2063,7 @@ def main():
         action="store_true",
         help="Experimental: For multimer models, disable cluster profiles.",
     )
-    pred_group.add_argument(
-        "--data", help="Path to AlphaFold2 weights directory.")
+    pred_group.add_argument("--data", help="Path to AlphaFold2 weights directory.")
 
     relax_group = parser.add_argument_group("Relaxation arguments", "")
     relax_group.add_argument(
@@ -1928,7 +2071,7 @@ def main():
         default=False,
         action="store_true",
         help="Enable OpenMM/Amber for structure relaxation. "
-        "Can improve the quality of side-chains at a cost of longer runtime. "
+        "Can improve the quality of side-chains at a cost of longer runtime. ",
     )
     relax_group.add_argument(
         "--num-relax",
@@ -1997,7 +2140,7 @@ def main():
         default=False,
         action="store_true",
         help="Save all raw outputs from model to a pickle file. "
-        "Useful for downstream use in other models."
+        "Useful for downstream use in other models.",
     )
     output_group.add_argument(
         "--save-recycles",
@@ -2038,13 +2181,11 @@ def main():
         choices=["none", "length", "random"],
     )
 
-    adv_group = parser.add_argument_group(
-        "Advanced arguments", ""
-    )
+    adv_group = parser.add_argument_group("Advanced arguments", "")
     adv_group.add_argument(
         "--host-url",
         default=DEFAULT_API_SERVER,
-        help="Which MSA server should be queried. By default, the free public MSA server hosted by the ColabFold team is queried. "
+        help="Which MSA server should be queried. By default, the free public MSA server hosted by the ColabFold team is queried. ",
     )
     adv_group.add_argument(
         "--disable-unified-memory",
@@ -2067,7 +2208,8 @@ def main():
 
     if (args.custom_template_path is not None) and (args.pdb_hit_file is not None):
         raise RuntimeError(
-            "Arguments --pdb-hit-file and --custom-template-path cannot be used simultaneously.")
+            "Arguments --pdb-hit-file and --custom-template-path cannot be used simultaneously."
+        )
     # disable unified memory
     if args.disable_unified_memory:
         for k in ENV.keys():
